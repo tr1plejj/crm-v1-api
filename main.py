@@ -11,7 +11,7 @@ db_name = 'products_data'
 
 app = FastAPI()
 
-@app.post('/put_in_db/{name}/{price}/{description}')
+@app.post('/put_in_db')
 def put_in_db(name: str, price: str, description: str):
     try:
         connection = psycopg2.connect(
@@ -74,7 +74,7 @@ def take_from_db(id: int):
                 database=db_name
             ).close()
 
-@app.post('/put_address_in_db/{address}/{id}')
+@app.post('/put_address_in_db')
 def put_address_in_db(address: str, prod_id: int):
     try:
         connection = psycopg2.connect(
@@ -88,7 +88,10 @@ def put_address_in_db(address: str, prod_id: int):
             name = str(data[0][0])
             print(name, prod_id, address)
             cursor.execute(f"insert into offers_data(name, address, prod_id) values ('{name}', '{address}', '{prod_id}')")
+            cursor.execute("select offer_id from offers_data order by offer_id desc limit 1")
+            offer_id = cursor.fetchone()
         connection.commit()
+        return offer_id
     except Exception as _ex:
         print('[INFO]', _ex)
 
@@ -105,6 +108,7 @@ def put_address_in_db(address: str, prod_id: int):
                 password=password,
                 database=db_name
             ).close()
+
 
 if __name__ == '__main__':
     uvicorn.run(app)
