@@ -11,6 +11,7 @@ db_name = 'products_data'
 
 app = FastAPI()
 
+
 @app.post('/put_in_db')
 def put_in_db(name: str, price: str, description: str):
     try:
@@ -30,18 +31,8 @@ def put_in_db(name: str, price: str, description: str):
         print('[INFO]', _ex)
 
     finally:
-        if psycopg2.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=db_name
-        ):
-            psycopg2.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=db_name
-            ).close()
+        if connection:
+            connection.close()
 
 @app.get('/take_from_db/{id}')
 def take_from_db(id: int):
@@ -59,23 +50,13 @@ def take_from_db(id: int):
         return about_prod
     except Exception as _ex:
         print('[INFO]', _ex)
-
     finally:
-        if psycopg2.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=db_name
-        ):
-            psycopg2.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=db_name
-            ).close()
+        if connection:
+            connection.close()
+
 
 @app.post('/put_address_in_db')
-def put_address_in_db(address: str, prod_id: int):
+def put_address_in_db(address: str, prod_id: int, user_id: int):
     try:
         connection = psycopg2.connect(
             host=host,
@@ -87,7 +68,7 @@ def put_address_in_db(address: str, prod_id: int):
             data = requests.get(f'http://127.0.0.1:8000/take_from_db/{prod_id}').json()
             name = str(data[0][0])
             print(name, prod_id, address)
-            cursor.execute(f"insert into offers_data(name, address, prod_id) values ('{name}', '{address}', '{prod_id}')")
+            cursor.execute(f"insert into offers_data(name, address, prod_id, user_id) values ('{name}', '{address}', '{prod_id}', '{user_id}')")
             cursor.execute("select offer_id from offers_data order by offer_id desc limit 1")
             offer_id = cursor.fetchone()
         connection.commit()
@@ -96,18 +77,29 @@ def put_address_in_db(address: str, prod_id: int):
         print('[INFO]', _ex)
 
     finally:
-        if psycopg2.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=db_name
-        ):
-            psycopg2.connect(
-                host=host,
-                user=user,
-                password=password,
-                database=db_name
-            ).close()
+        if connection:
+            connection.close()
+
+
+@app.get('/get_offers_data')
+def get_offers_data():
+    try:
+        connection = psycopg2.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=db_name
+        )
+        with connection.cursor() as cursor:
+            cursor.execute("select * from offers_data")
+            all_data = cursor.fetchall()
+        connection.commit()
+        return all_data
+    except Exception as _ex:
+        print('[INFO]', _ex)
+    finally:
+        if connection:
+            connection.close()
 
 
 if __name__ == '__main__':
