@@ -2,7 +2,7 @@ from fastapi import FastAPI
 import uvicorn
 import psycopg2
 import requests
-# from config import user, host, password, db_name
+
 host = 'localhost'
 user = 'postgres'
 password = 'Zxc1259663oliver'
@@ -95,6 +95,44 @@ def get_offers_data():
             all_data = cursor.fetchall()
         connection.commit()
         return all_data
+    except Exception as _ex:
+        print('[INFO]', _ex)
+    finally:
+        if connection:
+            connection.close()
+
+@app.get('/get_offer_and_return/{id}')
+def get_offer_and_return(id):
+    try:
+        connection = psycopg2.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=db_name
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(f"select user_id from offers_data where offer_id = {id}")
+            all_id = cursor.fetchone()
+        connection.commit()
+        return all_id
+    except Exception as _ex:
+        print('[INFO]', _ex)
+    finally:
+        if connection:
+            connection.close()
+
+@app.delete('/delete_from_offers_db/{id}')
+def delete_from_offers_db(id):
+    try:
+        connection = psycopg2.connect(
+            host=host,
+            user=user,
+            password=password,
+            database=db_name
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(f"delete from offers_data where offer_id = {id}")
+        connection.commit()
     except Exception as _ex:
         print('[INFO]', _ex)
     finally:
