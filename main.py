@@ -3,10 +3,10 @@ import uvicorn
 import psycopg2
 import requests
 
-host = 'localhost'
-user = 'postgres'
-password = 'Zxc1259663oliver'
-db_name = 'products_data'
+host = db_host
+user = db_user
+password = db_pass
+db_name = db_name
 
 
 app = FastAPI()
