@@ -1,144 +1,128 @@
+from typing import List
 from fastapi import FastAPI
 import uvicorn
-import psycopg2
-import requests
+from models import ProductOrm, async_session, OffersOrm, Product, Offers
+from sqlalchemy import select, desc, delete
 
-host = db_host
-user = db_user
-password = db_pass
-db_name = db_name
-
+host = 'localhost'
+user = 'postgres'
+password = 'Zxc1259663oliver'
+db_name = 'products_data'
 
 app = FastAPI()
 
 
 @app.post('/put_in_db')
-def put_in_db(name: str, price: str, description: str):
+async def put_in_db(name: str, price: int, description: str):
     try:
-        connection = psycopg2.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=db_name
-        )
-        with connection.cursor() as cursor:
-            cursor.execute(f"insert into prod_data(name, price, description) values ('{name}', '{price}', '{description}')")
-            cursor.execute("select id from prod_data order by id desc limit 1")
-            last_id = cursor.fetchone()
-        connection.commit()
-        return last_id
-    except Exception as _ex:
-        print('[INFO]', _ex)
-
+        async with async_session() as session:
+            product = ProductOrm(name=name, price=price, description=description)
+            session.add(product)
+            query = (
+                select(ProductOrm.id).
+                order_by(desc(ProductOrm.id)).
+                limit(1)
+            )
+            prod_id = await session.execute(query)
+            await session.commit()
+            result = prod_id.scalars().one()
+            return result
+    except Exception as e:
+        print(e)
     finally:
-        if connection:
-            connection.close()
+        await session.close()
 
-@app.get('/take_from_db/{id}')
-def take_from_db(id: int):
+
+@app.get('/take_from_db/{prod_id}', response_model=Product)
+async def take_from_db(prod_id: int):
     try:
-        connection = psycopg2.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=db_name
-        )
-        with connection.cursor() as cursor:
-            cursor.execute(f"select name, price, description, id from prod_data where id = {id}")
-            about_prod = cursor.fetchall()
-        connection.commit()
-        return about_prod
-    except Exception as _ex:
-        print('[INFO]', _ex)
+        async with async_session() as session:
+            query = (
+                select(ProductOrm).
+                filter_by(id=prod_id)
+            )
+            product = await session.execute(query)
+            product = product.scalars().one()
+            return product
+    except Exception as e:
+        print(e)
     finally:
-        if connection:
-            connection.close()
+        await session.close()
 
 
 @app.post('/put_address_in_db')
-def put_address_in_db(address: str, prod_id: int, user_id: int):
+async def put_address_in_db(address: str, prod_id: int, user_id: int):
     try:
-        connection = psycopg2.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=db_name
-        )
-        with connection.cursor() as cursor:
-            data = requests.get(f'http://127.0.0.1:8000/take_from_db/{prod_id}').json()
-            name = str(data[0][0])
-            print(name, prod_id, address)
-            cursor.execute(f"insert into offers_data(name, address, prod_id, user_id) values ('{name}', '{address}', '{prod_id}', '{user_id}')")
-            cursor.execute("select offer_id from offers_data order by offer_id desc limit 1")
-            offer_id = cursor.fetchone()
-        connection.commit()
-        return offer_id
-    except Exception as _ex:
-        print('[INFO]', _ex)
-
+        async with async_session() as session:
+            query = (
+                select(ProductOrm.name).
+                filter_by(id=prod_id)
+            )
+            name = await session.execute(query)
+            name = name.scalars().one()
+            offer = OffersOrm(name=name, prod_id=prod_id, address=address, user_id=user_id)
+            session.add(offer)
+            query = (
+                select(OffersOrm.offer_id).
+                order_by(desc(OffersOrm.offer_id)).
+                limit(1)
+            )
+            of_id = await session.execute(query)
+            await session.commit()
+            of_id = of_id.scalars().one()
+            return of_id
+    except Exception as e:
+        print(e)
     finally:
-        if connection:
-            connection.close()
+        await session.close()
 
 
-@app.get('/get_offers_data')
-def get_offers_data():
+@app.get('/get_offers_data', response_model=List[Offers])
+async def get_offers_data():
     try:
-        connection = psycopg2.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=db_name
-        )
-        with connection.cursor() as cursor:
-            cursor.execute("select * from offers_data")
-            all_data = cursor.fetchall()
-        connection.commit()
-        return all_data
-    except Exception as _ex:
-        print('[INFO]', _ex)
+        async with async_session() as session:
+            query = (
+                select(OffersOrm)
+            )
+            all_offers = await session.execute(query)
+            return all_offers.scalars().all()
+    except Exception as e:
+        print(e)
     finally:
-        if connection:
-            connection.close()
+        await session.close()
+
 
 @app.get('/get_offer_and_return/{id}')
-def get_offer_and_return(id):
+async def get_offer_and_return(id: int):
     try:
-        connection = psycopg2.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=db_name
-        )
-        with connection.cursor() as cursor:
-            cursor.execute(f"select user_id from offers_data where offer_id = {id}")
-            all_id = cursor.fetchone()
-        connection.commit()
-        return all_id
-    except Exception as _ex:
-        print('[INFO]', _ex)
+        async with async_session() as session:
+            query = (
+                select(OffersOrm.user_id).
+                filter_by(offer_id=id)
+            )
+            user = await session.execute(query)
+            return user.scalars().one()
+    except Exception as e:
+        print(e)
     finally:
-        if connection:
-            connection.close()
+        await session.close()
+
 
 @app.delete('/delete_from_offers_db/{id}')
-def delete_from_offers_db(id):
+async def delete_from_offers_db(id: int):
     try:
-        connection = psycopg2.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=db_name
-        )
-        with connection.cursor() as cursor:
-            cursor.execute(f"delete from offers_data where offer_id = {id}")
-        connection.commit()
-    except Exception as _ex:
-        print('[INFO]', _ex)
+        async with async_session() as session:
+            query = (
+                delete(OffersOrm).
+                filter_by(offer_id=id)
+            )
+            await session.execute(query)
+            await session.commit()
+            return {'status': 200}
+    except Exception as e:
+        print(e)
     finally:
-        if connection:
-            connection.close()
-
+        session.close()
 
 if __name__ == '__main__':
     uvicorn.run(app)
