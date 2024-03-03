@@ -4,11 +4,6 @@ import uvicorn
 from models import ProductOrm, async_session, OffersOrm, Product, Offers
 from sqlalchemy import select, desc, delete
 
-host = 'localhost'
-user = 'postgres'
-password = 'Zxc1259663oliver'
-db_name = 'products_data'
-
 app = FastAPI()
 
 

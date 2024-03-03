@@ -16,25 +16,28 @@ class Base(DeclarativeBase):
 
 
 class ProductOrm(Base):
-    __tablename__ = "prod_data"
+    __tablename__ = "product_data"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str]
     price: Mapped[int]
     description: Mapped[str]
 
+
 class OffersOrm(Base):
-    __tablename__ = "offers_data"
+    __tablename__ = "offer_data"
     name: Mapped[str]
     prod_id: Mapped[int]
     address: Mapped[str]
     offer_id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int]
 
+
 class Product(BaseModel):
     id: int
     name: str
     price: int
     description: str
+
 
 class Offers(BaseModel):
     name: str
