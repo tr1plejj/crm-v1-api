@@ -1,15 +1,37 @@
 from typing import List
-from fastapi import FastAPI
 import uvicorn
-from models import ProductOrm, async_session, OffersOrm, Product, Offers
+from fastapi import FastAPI
+from sqlalchemy.orm import selectinload
+from auth import User, Product, Offer, auth_backend, get_user_manager, UserRead, UserCreate, UserUpdate
+from database import ProductOrm, async_session, OffersOrm, UserOrm
 from sqlalchemy import select, desc, delete
+from fastapi_users import FastAPIUsers
 
-host = 'localhost'
-user = 'postgres'
-password = 'Zxc1259663oliver'
-db_name = 'products_data'
-
+fastapi_users = FastAPIUsers[User, int](
+    get_user_manager,
+    [auth_backend],
+)
 app = FastAPI()
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend),
+    prefix="/auth/jwt",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
+    prefix="/auth",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_verify_router(UserRead),
+    prefix="/auth",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_users_router(UserRead, UserUpdate),
+    prefix="/users",
+    tags=["users"],
+)
 
 
 @app.post('/put_in_db')
@@ -77,7 +99,7 @@ async def put_address_in_db(address: str, prod_id: int, user_id: int):
         await session.close()
 
 
-@app.get('/get_offers_data', response_model=List[Offers])
+@app.get('/get_offers_data', response_model=List[Offer])
 async def get_offers_data():
     try:
         async with async_session() as session:
@@ -100,8 +122,8 @@ async def get_offer_and_return(id: int):
                 select(OffersOrm.user_id).
                 filter_by(offer_id=id)
             )
-            user = await session.execute(query)
-            return user.scalars().one()
+            user_id = await session.execute(query)
+            return user_id.scalars().one()
     except Exception as e:
         print(e)
     finally:
@@ -124,6 +146,18 @@ async def delete_from_offers_db(id: int):
     finally:
         session.close()
 
+
+@app.get('/all_users')
+async def get_all_users():
+    async with async_session() as session:
+        query = (
+            select(UserOrm)
+            .options(selectinload(UserOrm.products))
+            .options(selectinload(UserOrm.offers))
+        )
+        users = await session.execute(query)
+        return users.unique().scalars().all()
+
+
 if __name__ == '__main__':
     uvicorn.run(app)
-
